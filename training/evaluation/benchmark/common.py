@@ -128,7 +128,10 @@ def _build_deterministic_frame_indices(
     target_duration = (sampling_n_frame - 1) / target_fps
     source_duration = max_source_index / source_fps
 
-    if source_duration + 1e-6 < target_duration:
+    # Uniform sampling needs a real source frame for every output frame. An fps
+    # upsample, including the 8n+1 duration rounding, can ask for more frames
+    # than the file contains. Repeat the nearest source frame in that case.
+    if source_duration + 1e-6 < target_duration and num_frames >= sampling_n_frame:
         return _build_uniform_frame_indices(num_frames, sampling_n_frame)
 
     target_times = torch.arange(sampling_n_frame, dtype=torch.float64) / target_fps

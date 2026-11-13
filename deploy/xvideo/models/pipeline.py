@@ -8,6 +8,7 @@ from diffusers.models import AutoencoderKL
 from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from xvideo.models.dit import Transformer3DModel, SELF_ATTN_MODE_REF_IMAGE_CACHE
+from xvideo.models.prompt_batch import expand_prompts_per_video
 
 PRECISION_TO_TYPE = {
     'fp32': torch.float32,
@@ -205,7 +206,6 @@ class Pipeline(DiffusionPipeline):
             device = device or self._execution_device
 
             prompt = [prompt] if isinstance(prompt, str) else prompt
-            batch_size = len(prompt) if prompt_embeds is None else prompt_embeds.shape[0]
 
             if prompt_embeds is None:
                 prompt_embeds, prompt_embeds_mask = self._get_qwen_prompt_embeds(
@@ -216,16 +216,10 @@ class Pipeline(DiffusionPipeline):
                 )
             prompt_embeds = prompt_embeds[:, :max_sequence_length]
             prompt_embeds_mask = prompt_embeds_mask[:, :max_sequence_length]
-            _, seq_len, _ = prompt_embeds.shape
-            prompt_embeds = prompt_embeds.repeat(1, num_videos_per_prompt, 1)
-            prompt_embeds = prompt_embeds.view(
-                batch_size * num_videos_per_prompt, seq_len, -1)
-            prompt_embeds_mask = prompt_embeds_mask.repeat(
-                1, num_videos_per_prompt, 1)
-            prompt_embeds_mask = prompt_embeds_mask.view(
-                batch_size * num_videos_per_prompt, seq_len)
 
-        return prompt_embeds, prompt_embeds_mask
+        return expand_prompts_per_video(
+            prompt_embeds, prompt_embeds_mask, num_videos_per_prompt,
+        )
 
     def normalize_latents(self, latent: torch.Tensor):
         latents_mean = torch.tensor(self.vae.config.latents_mean).view(

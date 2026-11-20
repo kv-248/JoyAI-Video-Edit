@@ -1781,7 +1781,9 @@ class JoyOmniV2VStreamingSession:
         with vae_ctx:
             pseudo_enc = pseudo_vae.encode(prev_pixels)
             if hasattr(pseudo_enc, "latent_dist"):
-                pseudo_latent = pseudo_enc.latent_dist.sample()
+                # The boundary frame is already known. Sampling its posterior
+                # draws a new latent on every chunk, independent of the seed.
+                pseudo_latent = pseudo_enc.latent_dist.mode()
             else:
                 pseudo_latent = pseudo_enc
         self._set_debug_state("postprocess", "store_pseudo_latent", chunk_idx)

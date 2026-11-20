@@ -710,7 +710,9 @@ class Pipeline(DiffusionPipeline):
             decode_input = latents[:, :, latent_index:latent_index + 1]
             if previous_frame is not None:
                 boundary = previous_frame.to(device=self.vae.device, dtype=self.vae.dtype)
-                anchor = self.vae.encode(boundary).latent_dist.sample()
+                # This frame was just decoded. A fresh posterior sample is a new
+                # latent the diffusion seed never controls, so the next chunk jumps.
+                anchor = self.vae.encode(boundary).latent_dist.mode()
                 decode_input = torch.cat([anchor, decode_input], dim=2)
             with self._autocast(self.vae.device, vae_dtype):
                 pixels = self.vae.decode(decode_input, return_dict=False)[0]
